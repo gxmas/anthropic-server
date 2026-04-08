@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: GHC ${{ matrix.ghc }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ghc: "9.8.4"
+            cabal: "3.10"
+          - ghc: "9.10.1"
+            cabal: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout repo anthropic-types
+        uses: actions/checkout@v4
+        with:
+          repository: gxmas/anthropic-types
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: libs/anthropic-types
+
+      - name: Checkout repo anthropic-protocol
+        uses: actions/checkout@v4
+        with:
+          repository: gxmas/anthropic-protocol
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: libs/anthropic-protocol
+
+      - name: Checkout repo json-schema-combinators
+        uses: actions/checkout@v4
+        with:
+          repository: gxmas/json-schema-combinators
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: libs/json-schema-combinators
+
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
+          cabal-update: false
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.cabal/store
+          key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ hashFiles('*.cabal', 'cabal.project.ci') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-
+
+      - name: Update package index
+        run: cabal update --project-file=cabal.project.ci
+
+      - name: Build
+        run: cabal build --project-file=cabal.project.ci
+
+      - name: Test
+        run: cabal test --project-file=cabal.project.ci --enable-tests --test-show-details=direct
+
+      - name: Haddock
+        run: cabal haddock --project-file=cabal.project.ci

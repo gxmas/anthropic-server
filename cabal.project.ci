@@ -1,0 +1,5 @@
+packages:
+  .
+  libs/anthropic-types
+  libs/anthropic-protocol
+  libs/json-schema-combinators
